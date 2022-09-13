@@ -1,11 +1,13 @@
+import imp
+from sqlalchemy import Column,Integer,String,Boolean,DateTime,ForeignKey
+from sqlalchemy.orm import declarative_base,relationship 
+from enum import Enum
 from unicodedata import name
-from sqlalchemy import *
-from sqlalchemy.orm import *
+from sqlalchemy import create_engine
+from sqlalchemy.orm import declarative_base
 
-engine = create_engine("postgresql+psycopg2://valorantAppClient:valclient@localhost:5432/valorant", echo=True, future=True)
 
 Base = declarative_base()
-
 class Account(Base):
     __tablename__ = 'account'
     id = Column(Integer, primary_key=True)
@@ -25,7 +27,7 @@ class AccountData(Base):
     date = Column(DateTime)
     update = Column(Boolean)
 
+engine = create_engine("postgresql+psycopg2://valorantAppClient:valclient@localhost:5432/valorant", echo=True, future=True)
 if __name__ == '__main__':
     Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)
-    

@@ -1,69 +1,12 @@
-import requests
-import json
-from sqlalchemy import *
-from sqlalchemy.orm import *
-from dbinit import *
-import datetime
-
-url = "https://api.henrikdev.xyz/valorant/v1/mmr/na/"
-engine = create_engine("postgresql+psycopg2://valorantAppClient:valclient@localhost:5432/valorant", echo=True, future=True)
-Session = sessionmaker(engine)
-session = Session()
-
-
-def registerAccount(user,name, tag, password):
-    urlAc = url+name+'/'+tag
-    x = requests.get(urlAc)
-    y = json.loads(x.text)
-    if(y["status"]=="404"):
-        return false
-    account = Account()
-    account.name = y["data"]["name"]
-    account.tag = y["data"]["tag"]
-    account.username = user
-    account.password = password
-    session.add(account)
-    session.commit()
-    return true
-
-def getAccount(id):
-    account = session.get(Account,id)
-    return account
-
-def updateData():
-    accounts = session.query(Account)
-    for a in accounts:
-        updateInfo(a)
-
-
-def updateInfo(account):
-    oldData = session.query(AccountData).filter_by(account_id = account.id).order_by(desc(AccountData.date)).first()
-    if(oldData is not None):
-        oldData.update = True
-        session.add(oldData)
-    name = account.name
-    tag = account.tag
-    urlAc = url+name+'/'+tag
-    x = requests.get(urlAc)
-    y = json.loads(x.text)
-    if(y["status"]=="404"):
-        return false
-    accountData = AccountData()
-    accountData.account_id = account.id
-    accountData.date = datetime.datetime.now()
-    accountData.update = False
-    accountData.elo = y["data"]["elo"]
-    accountData.tier = y["data"]["currenttierpatched"]
-    accountData.change = y["data"]["mmr_change_to_last_game"]
-    session.add(accountData)
-    session.commit()
-    return true
-    
-def getRank(playerData):
-    y = json.loads(playerData)
-    print(y["data"]["currenttierpatched"])
-
-
+from array import array
+from logging import root
+from msilib.schema import CustomAction
+from re import L
+from textwrap import fill
+from tkinter.tix import COLUMN
+from turtle import bgcolor, color, width
+import accountService
+from functools import partial
 #---------------------------------------Visual------------------------------------------------------------------------
 
 import tkinter
@@ -73,9 +16,10 @@ import customtkinter
 customtkinter.set_appearance_mode("System")  # Modes: "System" (standard), "Dark", "Light"
 customtkinter.set_default_color_theme("blue")  # Themes: "blue" (standard), "green", "dark-blue"
 
+
 class App(customtkinter.CTk):
 
-    WIDTH = 780
+    WIDTH = 1024
     HEIGHT = 520
 
     def __init__(self):
@@ -84,6 +28,7 @@ class App(customtkinter.CTk):
         self.geometry(f"{App.WIDTH}x{App.HEIGHT}")
         self.protocol("WM_DELETE_WINDOW", self.on_closing)  # call .on_closing() when app gets closed
 
+        accountService.updateData()
         # ========================
 
         self.grid_columnconfigure(1, weight=1)
@@ -96,6 +41,8 @@ class App(customtkinter.CTk):
 
         self.frame_right = customtkinter.CTkFrame(master=self)
         self.frame_right.grid(row=0, column=1, sticky="nswe", padx=20, pady=20)
+
+        canvas = customtkinter.CTkCanvas(self.frame_right)
 
         # ============ frame_left ============
 
@@ -124,35 +71,78 @@ class App(customtkinter.CTk):
 
         # ============ frame_right ============
 
-        self.frame_right.rowconfigure((0, 1, 2, 3), weight=1)
-        self.frame_right.rowconfigure(7, weight=10)
-        self.frame_right.columnconfigure((0, 1), weight=1)
-        self.frame_right.columnconfigure(2, weight=0)
-
-        self.frame_info = customtkinter.CTkFrame(master=self.frame_right)
-        self.frame_info.grid(row=0, column=0, columnspan=2, rowspan=4, pady=20, padx=20, sticky="nsew")
+        scrollbar = customtkinter.CTkScrollbar(self.frame_right,orientation="vertical",command=canvas.yview)
+        scrollbar.pack(side="right", fill="y")    
+        canvas.configure(yscrollcommand=scrollbar.set)
+        canvas.pack(side="left", fill="both", expand=True)
 
         # ============ frame_info ============
 
-        self.frame_info.rowconfigure(0, weight=1)
-        self.frame_info.columnconfigure(0, weight=1)
+        frameGroup = []
+        index = 0
 
-        self.label_info_1 = customtkinter.CTkLabel(master=self.frame_info,
-                                                   text="CTkLabel: Lorem ipsum dolor sit,\n" +
-                                                        "amet consetetur sadipscing elitr,\n" +
-                                                        "sed diam nonumy eirmod tempor" ,
-                                                   height=100,
-                                                   corner_radius=6,  # <- custom corner radius
-                                                   fg_color=("white", "gray38"),  # <- custom tuple-color
-                                                   justify=tkinter.LEFT)
-        self.label_info_1.grid(column=0, row=0, sticky="nwe", padx=15, pady=15)
+        for a in accountService.getAccounts():
+            scrollable = customtkinter.CTkFrame(canvas)
+            scrollable.bind(
+                "<Configure>", 
+                lambda e: canvas.configure(
+                    scrollregion=canvas.bbox("all")
+                )
+            )
 
-        self.progressbar = customtkinter.CTkProgressBar(master=self.frame_info)
-        self.progressbar.grid(row=1, column=0, sticky="ew", padx=15, pady=15)
+            canvas.create_window((0, index*100), window=scrollable, anchor="nw")
+
+            labelTName = customtkinter.CTkLabel(master = scrollable, text="Nombre")
+            labelTName.grid(row =0, column =0)
+            
+
+            labelVName = customtkinter.CTkLabel(master = scrollable, text=a.name)
+            labelVName.grid(row=1, column =0)
+
+            labelTTag = customtkinter.CTkLabel(master = scrollable, text="Tag")
+            labelTTag.grid(row =0, column =1)
+
+            labelVTag = customtkinter.CTkLabel(master = scrollable, text=a.tag)
+            labelVTag.grid(row =1, column =1)
+
+            lastData = accountService.lastInfo(a.id)
+
+            labelTRank = customtkinter.CTkLabel(master = scrollable, text="Rank")
+            labelTRank.grid(row =0, column =2)
+
+            rank = lastData.tier + " ("+ lastData.elo+")"
+
+            labelVRank = customtkinter.CTkLabel(master = scrollable, text= rank)
+            labelVRank.grid(row =1, column =2) 
+
+            labelTUsername = customtkinter.CTkLabel(master = scrollable, text="Username")
+            labelTUsername.grid(row =0, column = 3)
+
+            labelVUsername = customtkinter.CTkLabel(master = scrollable, text=a.username)
+            labelVUsername.grid(row =1, column =3)
+
+            labelTPassword = customtkinter.CTkLabel(master = scrollable, text="Password")
+            labelTPassword.grid(row =0, column = 4)
+
+            labelVPassword = customtkinter.CTkLabel(master = scrollable, text=a.password)
+            labelVPassword.grid(row =1, column =4)
+
+            button_1 = customtkinter.CTkButton(master=scrollable,
+                                                text="Copiar",
+                                                command=copy(a.p))
+            button_1.grid(row=1, column=5)
+
+
+
+            index +=1
+
+
+
 
         # ============ frame_right ==========
         
-        self.optionmenu_1.set("Dark")
+        self.optionmenu_1.set("Light")
+
 
     def button_event(self):
         print("Button pressed")
