@@ -124,15 +124,13 @@ class App(customtkinter.CTk):
             labelTPassword = customtkinter.CTkLabel(master = scrollable, text="Password")
             labelTPassword.grid(row =0, column = 4)
 
-            labelVPassword = customtkinter.CTkLabel(master = scrollable, text=a.password)
-            labelVPassword.grid(row =1, column =4)
+            def copy(index):
+                account = accountService.getAccount(index)
+                self.clipboard_clear()
+                self.clipboard_append(account.password)
 
-            button_1 = customtkinter.CTkButton(master=scrollable,
-                                                text="Copiar",
-                                                command=copy(a.p))
-            button_1.grid(row=1, column=5)
-
-
+            copyButton = customtkinter.CTkButton(master=scrollable,text="Copiar",command= lambda i=index:copy(i+1))
+            copyButton.grid(row=1, column=4)
 
             index +=1
 
