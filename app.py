@@ -45,7 +45,7 @@ class App(customtkinter.CTk):
         self.frame_right = customtkinter.CTkFrame(master=self)
         self.frame_right.grid(row=0, column=1, sticky="nswe", padx=20, pady=20)
 
-        canvas = customtkinter.CTkCanvas(self.frame_right)
+        self.canvas = customtkinter.CTkCanvas(self.frame_right)
 
         # ============ frame_left ============
 
@@ -61,7 +61,7 @@ class App(customtkinter.CTk):
 
         self.button_1 = customtkinter.CTkButton(master=self.frame_left,
                                                 text="Registrar",
-                                                command=self.register)
+                                                command= lambda:self.register(self))
         self.button_1.grid(row=2, column=0, pady=10, padx=20)
 
         self.label_mode = customtkinter.CTkLabel(master=self.frame_left, text="Appearance Mode:")
@@ -74,10 +74,10 @@ class App(customtkinter.CTk):
 
         # ============ frame_right ============
 
-        scrollbar = customtkinter.CTkScrollbar(self.frame_right,orientation="vertical",command=canvas.yview)
+        scrollbar = customtkinter.CTkScrollbar(self.frame_right,orientation="vertical",command=self.canvas.yview)
         scrollbar.pack(side="right", fill="y")    
-        canvas.configure(yscrollcommand=scrollbar.set)
-        canvas.pack(side="left", fill="both", expand=True)
+        self.canvas.configure(yscrollcommand=scrollbar.set)
+        self.canvas.pack(side="left", fill="both", expand=True)
 
         # ============ frame_info ============
 
@@ -85,7 +85,7 @@ class App(customtkinter.CTk):
         index = 0
 
         for a in accountService.getAccounts():
-            scrollable = customtkinter.CTkFrame(canvas)
+            scrollable = customtkinter.CTkFrame(self.canvas)
             scrollable.bind(
                 "<Configure>", 
                 lambda e: canvas.configure(
@@ -93,7 +93,7 @@ class App(customtkinter.CTk):
                 )
             )
 
-            canvas.create_window((0, index*100), window=scrollable, anchor="nw")
+            self.canvas.create_window((0, index*100), window=scrollable, anchor="nw")
 
             labelTName = customtkinter.CTkLabel(master = scrollable, text="Nombre")
             labelTName.grid(row =0, column =0)
@@ -136,6 +136,7 @@ class App(customtkinter.CTk):
             copyButton.grid(row=1, column=4)
 
             index +=1
+            frameGroup.append(scrollable)
 
 
 
@@ -150,8 +151,8 @@ class App(customtkinter.CTk):
     def on_closing(self, event=0):
         self.destroy()
 
-    def register(self):
-        register = Register(self)
+    def register(self, canvas):
+        register = Register(canvas)
         register.mainloop()
     
 
@@ -192,7 +193,7 @@ class Register(customtkinter.CTk):
         entryPassword = customtkinter.CTkEntry(master = self)
         entryPassword.grid(row = 4, column =1)
 
-        self.registerAccountBtn = customtkinter.CTkButton(master=self,text="Hola",command= lambda:self.finish(entryName.get(),entryTag.get(),entryUser.get(),entryPassword.get(),self.master))
+        self.registerAccountBtn = customtkinter.CTkButton(master=self,text="Registrar",command= lambda:self.finish(entryName.get(),entryTag.get(),entryUser.get(),entryPassword.get(),self.master))
         self.registerAccountBtn.grid(row=6, column=1)       
     
     def on_closing(self, event=0):
@@ -202,9 +203,61 @@ class Register(customtkinter.CTk):
         print(name,tag,user,password)
         if(name is not None):
             accountService.registerAccount(user,name,tag,password)
+            accountService.updateData()
+            master.canvas.delete("all")
+            index =0
+            for a in accountService.getAccounts():
+                scrollable = customtkinter.CTkFrame(master.canvas)
+                scrollable.bind(
+                "<Configure>", 
+                lambda e: master.canvas.configure(
+                    scrollregion=master.canvas.bbox("all")
+                )
+                 )
+
+                master.canvas.create_window((0, index*100), window=scrollable, anchor="nw")
+
+                labelTName = customtkinter.CTkLabel(master = scrollable, text="Nombre")
+                labelTName.grid(row =0, column =0)
+            
+                labelVName = customtkinter.CTkLabel(master = scrollable, text=a.name)
+                labelVName.grid(row=1, column =0)
+
+                labelTTag = customtkinter.CTkLabel(master = scrollable, text="Tag")
+                labelTTag.grid(row =0, column =1)
+
+                labelVTag = customtkinter.CTkLabel(master = scrollable, text=a.tag)
+                labelVTag.grid(row =1, column =1)
+
+                lastData = accountService.lastInfo(a.id)
+
+                labelTRank = customtkinter.CTkLabel(master = scrollable, text="Rank")
+                labelTRank.grid(row =0, column =2)
+
+                rank = lastData.tier + " ("+ lastData.elo+")"
+
+                labelVRank = customtkinter.CTkLabel(master = scrollable, text= rank)
+                labelVRank.grid(row =1, column =2) 
+
+                labelTUsername = customtkinter.CTkLabel(master = scrollable, text="Username")
+                labelTUsername.grid(row =0, column = 3)
+
+                labelVUsername = customtkinter.CTkLabel(master = scrollable, text=a.username)
+                labelVUsername.grid(row =1, column =3)
+
+                labelTPassword = customtkinter.CTkLabel(master = scrollable, text="Password")
+                labelTPassword.grid(row =0, column = 4)
+
+                def copy(index,master):
+                    account = accountService.getAccount(index)
+                    master.clipboard_clear()
+                    master.clipboard_append(account.password)
+
+                copyButton = customtkinter.CTkButton(master=scrollable,text="Copiar",command= lambda i=a.id:copy(i,master))
+                copyButton.grid(row=1, column=4)
+                index +=1
             self.destroy()
         else:
-            master.refresh()
             self.destroy()
        
         
