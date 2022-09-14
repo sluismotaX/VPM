@@ -17,15 +17,16 @@ def registerAccount(user,name, tag, password):
     x = requests.get(urlAc)
     y = json.loads(x.text)
     if(y["status"]=="404"):
-        return false
-    account = Account()
-    account.name = y["data"]["name"]
-    account.tag = y["data"]["tag"]
-    account.username = user
-    account.password = password
-    session.add(account)
-    session.commit()
-    return true
+        return False
+    else:
+        account = Account()
+        account.name = y["data"]["name"]
+        account.tag = y["data"]["tag"]
+        account.username = user
+        account.password = password
+        session.add(account)
+        session.commit()
+        return True
 
 def getAccount(id):
     account = session.get(Account,id)

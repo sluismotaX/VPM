@@ -1,10 +1,13 @@
 from array import array
+from doctest import master
+import json
 from logging import root
 from msilib.schema import CustomAction
 from re import L
 from textwrap import fill
 from tkinter.tix import COLUMN
 from turtle import bgcolor, color, width
+from urllib import request
 import accountService
 from functools import partial
 #---------------------------------------Visual------------------------------------------------------------------------
@@ -129,7 +132,7 @@ class App(customtkinter.CTk):
                 self.clipboard_clear()
                 self.clipboard_append(account.password)
 
-            copyButton = customtkinter.CTkButton(master=scrollable,text="Copiar",command= lambda i=index:copy(i+1))
+            copyButton = customtkinter.CTkButton(master=scrollable,text="Copiar",command= lambda i=a.id:copy(i))
             copyButton.grid(row=1, column=4)
 
             index +=1
@@ -141,10 +144,6 @@ class App(customtkinter.CTk):
         
         self.optionmenu_1.set("Light")
 
-
-    def button_event(self):
-        print("Button pressed")
-
     def change_appearance_mode(self, new_appearance_mode):
         customtkinter.set_appearance_mode(new_appearance_mode)
 
@@ -152,8 +151,9 @@ class App(customtkinter.CTk):
         self.destroy()
 
     def register(self):
-        register = Register()
+        register = Register(self)
         register.mainloop()
+    
 
 
 class Register(customtkinter.CTk):
@@ -161,14 +161,56 @@ class Register(customtkinter.CTk):
     WIDTH = 350
     HEIGHT = 300
 
-    def __init__(self):
+    def __init__(self,master):
         super().__init__()
+        self.master = master
         self.title("Account Registration")
         self.geometry(f"{Register.WIDTH}x{Register.HEIGHT}")
         self.protocol("WM_DELETE_WINDOW", self.on_closing)  
 
+        labelTName = customtkinter.CTkLabel(master = self, text="Nombre")
+        labelTName.grid(row =0, column =0)
+
+        entryName = customtkinter.CTkEntry(master = self)
+        entryName.grid(row = 0, column =1)
+
+        labelTTag = customtkinter.CTkLabel(master = self, text="Tag")
+        labelTTag.grid(row =1, column =0)
+
+        entryTag = customtkinter.CTkEntry(master = self)
+        entryTag.grid(row = 1, column =1)
+
+        labelTUser = customtkinter.CTkLabel(master = self, text="Usuario")
+        labelTUser.grid(row =3, column =0)
+
+        entryUser = customtkinter.CTkEntry(master = self)
+        entryUser.grid(row = 3, column =1)
+
+        labelTPassword = customtkinter.CTkLabel(master = self, text="Contraseña")
+        labelTPassword.grid(row =4, column =0)
+
+        entryPassword = customtkinter.CTkEntry(master = self)
+        entryPassword.grid(row = 4, column =1)
+
+        self.registerAccountBtn = customtkinter.CTkButton(master=self,text="Hola",command= lambda:self.finish(entryName.get(),entryTag.get(),entryUser.get(),entryPassword.get(),self.master))
+        self.registerAccountBtn.grid(row=6, column=1)       
+    
     def on_closing(self, event=0):
         self.destroy()
+    
+    def finish(self,name,tag,user,password, master):
+        print(name,tag,user,password)
+        if(name is not None):
+            accountService.registerAccount(user,name,tag,password)
+            self.destroy()
+        else:
+            master.refresh()
+            self.destroy()
+       
+        
+
+
+
 
 
 
